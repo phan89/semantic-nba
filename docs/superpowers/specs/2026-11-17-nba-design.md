@@ -10,6 +10,10 @@ Status: approved for planning (2026-11-17)
 
 Sections 4 and 8 still describe the nightly and hosted design. They are kept for later and are out of scope now.
 
+**Top priorities (2026-11-17, from the user):**
+1. **Search by any name.** That covers first name alone ("Kobe"), former name ("Lew Alcindor", "Ron Artest"), nickname ("The Mailman") and accent-free spelling ("jokic"). Results say which name matched.
+2. **Point-in-time history.** Every event needs a real date, so questions like "who won an NBA title at 27?" are answerable. Age, name and team are all evaluated *as of the event*: Kareem won the 1971 title as Lew Alcindor, aged 24, with the Milwaukee Bucks. See section 5a.
+
 ## 1. Intent
 
 An NBA companion that does two things well:
@@ -108,6 +112,21 @@ This answers questions like "current head coaches who played in the NBA", "every
 - `wiki_passage`: `id`, `entity_type`, `entity_id`, `article`, `section`, `text`.
   - Indexed in ES with BM25 and vector search, the same hybrid approach as HN.
   - Linked to people, franchises and seasons, so retrieval can filter by entity.
+
+### 5a. Point in time
+- `season`: `season_id` (`1990-91`), `start_date` (first regular-season game), `regular_end_date`, `playoffs_end_date` (the last Finals game, which is the championship date). All are derived from league game logs.
+- Each `award` row gets `event_date`:
+  - championship and Finals MVP: `playoffs_end_date`;
+  - other season awards (MVP, ROY, DPOY, All-NBA): `regular_end_date`. This convention is documented, because exact announcement dates aren't in the data.
+- Draft picks get the draft date. Roles have from/to dates already.
+- Helper views:
+  - `v_award_at`: person, award, season, event_date, plus:
+    - `age_at_event` (whole years on that date);
+    - `season_age` (age on Feb 1 of the season, the Basketball-Reference convention, so answers can match that site);
+    - `name_at_event` (the `person_name` valid on that date);
+    - `team_at_event` (the `team_era` valid on that date).
+  - `v_person_on(date)`, as a SQL pattern: the person's role, team, name and age on any date.
+- Example: "titles won at age 27" is `select … from v_award_at where award='NBA Champion' and age_at_event=27`.
 
 ### Linking NBA ↔ Wikidata
 - Exact match on the NBA ID stored in Wikidata where it exists.
